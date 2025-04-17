@@ -12,10 +12,10 @@ app.use((req, res, next) => {
 });
 
 // API endpoint to get Excel data as JSON
-app.get('/api/excel-data', (req, res) => {
+app.get('/api/excel-data', async (req, res) => {
     try {
         // Read the Excel file
-        const excelPath = path.join(__dirname, 'Moodle_datein.xlsx');
+        const excelPath = path.join(process.cwd(), 'Moodle_datein.xlsx');
         const workbook = XLSX.readFile(excelPath);
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(sheet);
@@ -32,6 +32,9 @@ app.get('/api/excel-data', (req, res) => {
 app.get('/', (req, res) => {
     res.json({ message: 'Excel API is running. Use /api/excel-data to get the Excel data.' });
 });
+
+// Export the Express API
+module.exports = app;
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
