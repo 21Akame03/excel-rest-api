@@ -2,7 +2,6 @@ const express = require('express');
 const XLSX = require('xlsx');
 const path = require('path');
 const app = express();
-const port = process.env.PORT || 3000;
 
 // Enable CORS for all routes
 app.use((req, res, next) => {
@@ -34,9 +33,4 @@ app.get('/', (req, res) => {
 });
 
 // Export the Express API
-module.exports = app;
-
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
-    console.log(`API endpoint: http://localhost:${port}/api/excel-data`); 
-}); 
+module.exports = app; 
