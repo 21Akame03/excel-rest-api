@@ -7,95 +7,25 @@
   <style>
     body { font-family: sans-serif; padding: 20px; }
     pre { background: #f5f5f5; padding: 1em; border-radius: 8px; }
-    .container { max-width: 1200px; margin: 0 auto; }
-    .tabs { margin-bottom: 20px; }
-    .tab-button { 
-      padding: 10px 20px; 
-      margin-right: 10px; 
-      border: none; 
-      background: #f0f0f0;
-      cursor: pointer;
-    }
-    .tab-button.active { 
-      background: #007bff; 
-      color: white; 
-    }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Excel Data Viewer</h1>
-    
-    <div class="tabs">
-      <button class="tab-button active" onclick="switchTab('direct')">Direct Excel Parsing</button>
-      <button class="tab-button" onclick="switchTab('api')">API Data</button>
-    </div>
-
-    <div id="direct-tab" class="tab-content active">
-      <h2>Direct Excel Parsing</h2>
-      <pre id="direct-output">Loading...</pre>
-    </div>
-
-    <div id="api-tab" class="tab-content">
-      <h2>API Data</h2>
-      <pre id="api-output">Click "Load API Data" to fetch</pre>
-      <button onclick="loadApiData()">Load API Data</button>
-    </div>
-  </div>
+  <h1>Excel Data Parsed to JSON</h1>
+  <pre id="output">Loading...</pre>
 
   <script>
-    // Tab switching functionality
-    function switchTab(tabName) {
-      // Hide all tabs
-      document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-      });
-      document.querySelectorAll('.tab-button').forEach(button => {
-        button.classList.remove('active');
-      });
-
-      // Show selected tab
-      document.getElementById(`${tabName}-tab`).classList.add('active');
-      document.querySelector(`button[onclick="switchTab('${tabName}')"]`).classList.add('active');
-    }
-
-    // Original Excel loading function
     async function loadExcel() {
-      try {
-        const url = "Moodle_datein.xlsx";
-        const res = await fetch(url);
-        const buf = await res.arrayBuffer();
+      const url = "Moodle_datein.xlsx";  // Local path in same folder
+      const res = await fetch(url);
+      const buf = await res.arrayBuffer();
 
-        const wb = XLSX.read(buf, { type: "array" });
-        const sheet = wb.Sheets[wb.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet);
+      const wb = XLSX.read(buf, { type: "array" });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet);
 
-        document.getElementById("direct-output").textContent = JSON.stringify(json, null, 2);
-      } catch (error) {
-        document.getElementById("direct-output").textContent = `Error: ${error.message}`;
-      }
+      document.getElementById("output").textContent = JSON.stringify(json, null, 2);
     }
 
-    // API data loading function
-    async function loadApiData() {
-      try {
-        document.getElementById("api-output").textContent = "Loading...";
-        // Use the current domain for the API endpoint
-        const apiUrl = window.location.origin + '/api/excel-data';
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        document.getElementById("api-output").textContent = JSON.stringify(data, null, 2);
-      } catch (error) {
-        document.getElementById("api-output").textContent = `Error: ${error.message}`;
-      }
-    }
-
-    // Load direct Excel data on page load
     loadExcel();
   </script>
 </body>
