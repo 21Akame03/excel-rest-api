@@ -4,9 +4,6 @@ const path = require('path');
 const app = express();
 const port = 3000;
 
-// Serve static files from the current directory
-app.use(express.static(__dirname));
-
 // API endpoint to get Excel data as JSON
 app.get('/api/excel-data', (req, res) => {
     try {
@@ -25,4 +22,5 @@ app.get('/api/excel-data', (req, res) => {
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
+    console.log(`API endpoint: http://localhost:${port}/api/excel-data`);
 }); 
