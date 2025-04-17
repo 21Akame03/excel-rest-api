@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Moodle Excel Viewer</title>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    pre { background: #f5f5f5; padding: 1em; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Excel Data Parsed to JSON</h1>
+  <pre id="output">Loading...</pre>
+
+  <script>
+    async function loadExcel() {
+      const url = "Moodle_datein.xlsx";  // Local path in same folder
+      const res = await fetch(url);
+      const buf = await res.arrayBuffer();
+
+      const wb = XLSX.read(buf, { type: "array" });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet);
+
+      document.getElementById("output").textContent = JSON.stringify(json, null, 2);
+    }
+
+    loadExcel();
+  </script>
+</body>
+</html>
