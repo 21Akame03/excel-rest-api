@@ -6,20 +6,13 @@ const app = express();
 // In-memory storage for the Excel file
 let excelBuffer = null;
 
-// Initialize with default data if no file is uploaded
+// Initialize with the local Excel file
 try {
-    const defaultData = [
-        { Name: "Seminar_Begin", Data: 45709 },
-        { Name: "Seminar_Ende", Data: 45768 },
-        { Name: "Praktikum_Begin", Data: 45769 },
-        { Name: "Praktikum_ende", Data: 45831 }
-    ];
-    const workbook = XLSX.utils.book_new();
-    const worksheet = XLSX.utils.json_to_sheet(defaultData);
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+    const workbook = XLSX.readFile('Moodle_datein.xlsx');
     excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    console.log('Initialized with local Excel file');
 } catch (error) {
-    console.error('Error initializing default data:', error);
+    console.error('Error reading local Excel file:', error);
 }
 
 // Configure multer for handling file uploads
@@ -27,14 +20,16 @@ const storage = multer.memoryStorage();
 const upload = multer({
     storage: storage,
     fileFilter: (req, file, cb) => {
+        console.log('Received file:', file.originalname, 'mimetype:', file.mimetype);
         if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
-            file.mimetype === 'application/vnd.ms-excel') {
+            file.mimetype === 'application/vnd.ms-excel' ||
+            file.mimetype === 'application/octet-stream') {  // Added for binary uploads
             cb(null, true);
         } else {
             cb(new Error('Only Excel files are allowed'));
         }
     }
-});
+}).single('file');
 
 // Enable CORS for all routes
 app.use((req, res, next) => {
@@ -54,7 +49,7 @@ app.use(express.json());
 app.get('/api/excel-data', async (req, res) => {
     try {
         if (!excelBuffer) {
-            return res.status(404).json({ error: 'No Excel file available' });
+            return res.status(404).json({ error: 'No Excel file available. Please upload a file first.' });
         }
 
         const workbook = XLSX.read(excelBuffer, { type: 'buffer' });
@@ -72,7 +67,7 @@ app.get('/api/excel-data', async (req, res) => {
 app.get('/api/download', async (req, res) => {
     try {
         if (!excelBuffer) {
-            return res.status(404).json({ error: 'No Excel file available' });
+            return res.status(404).json({ error: 'No Excel file available. Please upload a file first.' });
         }
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -85,39 +80,54 @@ app.get('/api/download', async (req, res) => {
 });
 
 // API endpoint to upload Excel file
-app.post('/api/upload', upload.single('file'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'No file uploaded' });
+app.post('/api/upload', (req, res) => {
+    upload(req, res, async (err) => {
+        try {
+            if (err) {
+                console.error('Multer error:', err);
+                return res.status(400).json({ error: err.message });
+            }
+
+            if (!req.file) {
+                console.error('No file received');
+                return res.status(400).json({ error: 'No file uploaded' });
+            }
+
+            console.log('File received:', req.file.originalname, 'size:', req.file.size);
+
+            // Read the uploaded file
+            const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+            
+            // Validate the Excel file
+            if (workbook.SheetNames.length === 0) {
+                console.error('No sheets in workbook');
+                return res.status(400).json({ error: 'Excel file has no sheets' });
+            }
+
+            // Convert to JSON to validate data
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+            if (jsonData.length === 0) {
+                console.error('No data in sheet');
+                return res.status(400).json({ error: 'Excel file has no data' });
+            }
+
+            console.log('Parsed data:', JSON.stringify(jsonData));
+
+            // Store the file buffer in memory
+            excelBuffer = req.file.buffer;
+
+            res.json({ 
+                message: 'File uploaded successfully',
+                rowCount: jsonData.length,
+                data: jsonData
+            });
+        } catch (error) {
+            console.error('Error processing upload:', error);
+            res.status(500).json({ error: 'Failed to process uploaded file: ' + error.message });
         }
-
-        // Read the uploaded file
-        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-        
-        // Validate the Excel file
-        if (workbook.SheetNames.length === 0) {
-            return res.status(400).json({ error: 'Excel file has no sheets' });
-        }
-
-        // Convert to JSON to validate data
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(sheet);
-
-        if (jsonData.length === 0) {
-            return res.status(400).json({ error: 'Excel file has no data' });
-        }
-
-        // Store the file buffer in memory
-        excelBuffer = req.file.buffer;
-
-        res.json({ 
-            message: 'File uploaded successfully',
-            rowCount: jsonData.length
-        });
-    } catch (error) {
-        console.error('Error uploading file:', error);
-        res.status(500).json({ error: 'Failed to upload file' });
-    }
+    });
 });
 
 // Serve static HTML for the root path
@@ -197,6 +207,12 @@ app.get('/', (req, res) => {
                     text-align: center;
                     padding: 20px;
                 }
+                .info {
+                    color: #0dcaf0;
+                    text-align: center;
+                    padding: 20px;
+                    font-style: italic;
+                }
             </style>
         </head>
         <body>
@@ -209,6 +225,7 @@ app.get('/', (req, res) => {
                 </div>
                 <div id="loading" class="loading">Loading data...</div>
                 <div id="error" class="error" style="display: none;"></div>
+                <div id="info" class="info" style="display: none;">No data available. Please upload an Excel file.</div>
                 <table id="dataTable">
                     <thead>
                         <tr id="tableHeader"></tr>
@@ -222,6 +239,11 @@ app.get('/', (req, res) => {
                     try {
                         const response = await fetch('/api/excel-data');
                         if (!response.ok) {
+                            if (response.status === 404) {
+                                document.getElementById('loading').style.display = 'none';
+                                document.getElementById('info').style.display = 'block';
+                                return;
+                            }
                             throw new Error('Failed to fetch data');
                         }
                         const data = await response.json();
@@ -241,10 +263,11 @@ app.get('/', (req, res) => {
                     tableHeader.innerHTML = '';
                     tableBody.innerHTML = '';
                     document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error').style.display = 'none';
+                    document.getElementById('info').style.display = 'none';
 
                     if (data.length === 0) {
-                        document.getElementById('error').style.display = 'block';
-                        document.getElementById('error').textContent = 'No data available';
+                        document.getElementById('info').style.display = 'block';
                         return;
                     }
 
@@ -273,6 +296,11 @@ app.get('/', (req, res) => {
                     const file = event.target.files[0];
                     if (!file) return;
 
+                    document.getElementById('loading').style.display = 'block';
+                    document.getElementById('loading').textContent = 'Uploading file...';
+                    document.getElementById('error').style.display = 'none';
+                    document.getElementById('info').style.display = 'none';
+
                     const formData = new FormData();
                     formData.append('file', file);
 
@@ -287,9 +315,16 @@ app.get('/', (req, res) => {
                             throw new Error(result.error || 'Upload failed');
                         }
 
+                        // Display success message
+                        document.getElementById('loading').textContent = 'File uploaded successfully!';
+                        setTimeout(() => {
+                            document.getElementById('loading').style.display = 'none';
+                        }, 2000);
+
                         // Refresh the data display
-                        fetchData();
+                        displayData(result.data);
                     } catch (error) {
+                        document.getElementById('loading').style.display = 'none';
                         document.getElementById('error').style.display = 'block';
                         document.getElementById('error').textContent = 'Upload error: ' + error.message;
                     }
