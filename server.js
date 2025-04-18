@@ -60,13 +60,16 @@ app.get('/api/download', async (req, res) => {
             return res.status(404).json({ error: 'Excel file not found' });
         }
 
+        // Read the file and convert to buffer
+        const workbook = XLSX.readFile(excelPath);
+        const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
         // Set headers for file download
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', 'attachment; filename=Moodle_datein.xlsx');
         
-        // Stream the file
-        const fileStream = fs.createReadStream(excelPath);
-        fileStream.pipe(res);
+        // Send the buffer
+        res.send(buffer);
     } catch (error) {
         console.error('Error downloading file:', error);
         res.status(500).json({ error: 'Failed to download file' });
