@@ -1,6 +1,7 @@
 const express = require('express');
 const XLSX = require('xlsx');
 const multer = require('multer');
+const path = require('path');
 const app = express();
 
 // In-memory storage for the Excel file
@@ -8,9 +9,11 @@ let excelBuffer = null;
 
 // Initialize with the local Excel file
 try {
-    const workbook = XLSX.readFile('Moodle_datein.xlsx');
+    const excelPath = path.join(__dirname, 'Moodle_datein.xlsx');
+    console.log('Attempting to read Excel file from:', excelPath);
+    const workbook = XLSX.readFile(excelPath);
     excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-    console.log('Initialized with local Excel file');
+    console.log('Successfully initialized with local Excel file');
 } catch (error) {
     console.error('Error reading local Excel file:', error);
 }
