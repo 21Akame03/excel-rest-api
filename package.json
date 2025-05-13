@@ -4,6 +4,7 @@
   "description": "Excel to JSON REST API",
   "main": "server.js",
   "type": "module",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },

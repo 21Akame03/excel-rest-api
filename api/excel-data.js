@@ -1,6 +1,6 @@
-const XLSX = require('xlsx');
-const https = require('https');
-const path = require('path');
+import XLSX from 'xlsx';
+import https from 'https';
+import path from 'path';
 
 const FILE_URLS = {
     'PublicMoodleNewsfeed.xlsx': 'https://digilern.hs-duesseldorf.de/cloud/s/bBZBbH6r8aTLMoy/download/PublicMoodleNewsfeed.xlsx',
