@@ -67,13 +67,15 @@ export default async function handler(req, res) {
 
         // Process data based on file type
         if (filename === 'PublicMoodleData.xlsx') {
-            const expectedHeaders = ['Fach', 'Versuch', 'Variable', 'Daten'];
+            const headers = jsonData[0]; // Get actual headers from first row
             const processedData = jsonData.slice(1)
                 .filter(row => row.some(cell => cell != null)) // Remove empty rows
                 .map(row => {
                     const rowData = {};
-                    expectedHeaders.forEach((header, index) => {
-                        rowData[header] = row[index] !== undefined ? row[index] : null;
+                    headers.forEach((header, index) => {
+                        if (header) {
+                            rowData[header] = row[index] !== undefined ? row[index] : null;
+                        }
                     });
                     return rowData;
                 })
@@ -89,7 +91,7 @@ export default async function handler(req, res) {
 
             return res.status(200).json({
                 filename,
-                headers: expectedHeaders,
+                headers: headers.filter(Boolean),
                 data: processedData
             });
         } else {
