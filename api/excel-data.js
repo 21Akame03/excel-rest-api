@@ -1,19 +1,42 @@
 const XLSX = require('xlsx');
+const https = require('https');
 const path = require('path');
+
+const FILE_URLS = {
+    'PublicMoodleNewsfeed.xlsx': 'https://digilern.hs-duesseldorf.de/cloud/s/bBZBbH6r8aTLMoy/download/PublicMoodleNewsfeed.xlsx',
+    'PublicMoodleData.xlsx': 'https://digilern.hs-duesseldorf.de/cloud/s/6LC7Q982HJt28qi/download/PublicMoodleData.xlsx'
+};
+
+async function fetchExcelFile(url) {
+    return new Promise((resolve, reject) => {
+        https.get(url, response => {
+            const chunks = [];
+            response.on('data', chunk => chunks.push(chunk));
+            response.on('end', () => resolve(Buffer.concat(chunks)));
+            response.on('error', reject);
+        }).on('error', reject);
+    });
+}
 
 module.exports = async (req, res) => {
     try {
         const filename = req.query.file || 'Moodle_datein.xlsx';
-        
-        // Read the Excel file
-        const excelPath = path.join(process.cwd(), filename);
-        const workbook = XLSX.readFile(excelPath);
+        let workbook;
+
+        // Check if we need to fetch from URL
+        if (FILE_URLS[filename]) {
+            const buffer = await fetchExcelFile(FILE_URLS[filename]);
+            workbook = XLSX.read(buffer, { type: 'buffer' });
+        } else {
+            // Read local file as fallback
+            const excelPath = path.join(process.cwd(), filename);
+            workbook = XLSX.readFile(excelPath);
+        }
+
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        
-        // Get the range of the sheet
         const range = XLSX.utils.decode_range(sheet['!ref']);
         
-        // Get headers from the first row
+        // Get headers from the first row (these will be your table headers)
         const headers = [];
         for(let C = range.s.c; C <= range.e.c; ++C) {
             const cell = sheet[XLSX.utils.encode_cell({r: 0, c: C})];
@@ -24,13 +47,15 @@ module.exports = async (req, res) => {
         const jsonData = [];
         for(let R = range.s.r + 1; R <= range.e.r; ++R) {
             const row = {};
+            let hasData = false;
             for(let C = range.s.c; C <= range.e.c; ++C) {
                 const cell = sheet[XLSX.utils.encode_cell({r: R, c: C})];
                 if (cell && headers[C]) {
                     row[headers[C]] = cell.v;
+                    hasData = true;
                 }
             }
-            if (Object.keys(row).length > 0) {
+            if (hasData) {
                 jsonData.push(row);
             }
         }
