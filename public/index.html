@@ -45,7 +45,8 @@
             viewEl.innerHTML = '';
 
             try {
-                const response = await fetch(`/api/excel-data?file=${encodeURIComponent(filename)}`);
+                const baseUrl = 'https://excel-rest-h41ddjdv7-akames-projects-01f01e48.vercel.app';
+                const response = await fetch(`${baseUrl}/api/excel-data?file=${encodeURIComponent(filename)}`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch data');
                 }

@@ -4,12 +4,20 @@
         {
             "src": "api/excel-data.js",
             "use": "@vercel/node"
+        },
+        {
+            "src": "public/**/*",
+            "use": "@vercel/static"
         }
     ],
     "routes": [
         {
             "src": "/api/excel-data",
             "dest": "/api/excel-data.js"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/public/$1"
         }
     ]
 } 

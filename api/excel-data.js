@@ -74,7 +74,7 @@ export default async function handler(req, res) {
         if (filename === 'PublicMoodleData.xlsx') {
             // For PublicMoodleData.xlsx, use specific headers
             const expectedHeaders = ['Fach', 'Versuch', 'Variable', 'Daten'];
-            data = jsonData.slice(1)
+            const processedData = jsonData.slice(1)
                 .filter(row => row.some(cell => cell != null)) // Remove empty rows
                 .map(row => {
                     const rowData = {};
@@ -92,7 +92,11 @@ export default async function handler(req, res) {
                         r.Daten === row.Daten
                     )
                 );
-            headers = expectedHeaders;
+            return {
+                filename,
+                headers: expectedHeaders,
+                data: processedData
+            };
         } else {
             // For other files (like PublicMoodleNewsfeed.xlsx), use existing processing
             data = jsonData.slice(1)
