@@ -45,7 +45,7 @@
             viewEl.innerHTML = '';
 
             try {
-                const baseUrl = 'https://excel-rest-h41ddjdv7-akames-projects-01f01e48.vercel.app';
+                const baseUrl = 'https://excel-rest-a2mizldii-akames-projects-01f01e48.vercel.app';
                 const response = await fetch(`${baseUrl}/api/excel-data?file=${encodeURIComponent(filename)}`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch data');
@@ -85,7 +85,7 @@
                 <tr class="hover:bg-gray-50">
                     ${headers.map(header => `
                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-                            ${item[header] !== undefined ? item[header] : ''}
+                            ${item[header] !== undefined && item[header] !== null ? item[header] : '-'}
                         </td>
                     `).join('')}
                 </tr>
