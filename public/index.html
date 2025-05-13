@@ -4,121 +4,114 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Excel Data Viewer</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background-color: #f8f9fa;
-            font-weight: bold;
-        }
-        tr:hover {
-            background-color: #f5f5f5;
-        }
-        .loading {
-            text-align: center;
-            padding: 20px;
-            font-style: italic;
-            color: #666;
-        }
-        .error {
-            color: #dc3545;
-            text-align: center;
-            padding: 20px;
-        }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <div class="container">
-        <h1>Excel Data Viewer</h1>
-        <div id="loading" class="loading">Loading data...</div>
-        <div id="error" class="error" style="display: none;"></div>
-        <table id="dataTable">
-            <thead>
-                <tr id="tableHeader"></tr>
-            </thead>
-            <tbody id="tableBody"></tbody>
-        </table>
+<body class="bg-gray-50">
+    <div class="container max-w-6xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">Excel Data Viewer</h1>
+        
+        <div class="mb-6">
+            <label class="block text-gray-700 text-sm font-bold mb-2" for="fileSelect">
+                Select Excel File:
+            </label>
+            <select id="fileSelect" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                <option value="Moodle_datein.xlsx">Moodle_datein.xlsx</option>
+                <option value="PublicMoodleData.xlsx">PublicMoodleData.xlsx</option>
+                <option value="PublicMoodleNewsfeed.xlsx">PublicMoodleNewsfeed.xlsx</option>
+            </select>
+        </div>
+
+        <div id="loading" class="text-center py-8 text-gray-600">Loading data...</div>
+        <div id="error" class="hidden"></div>
+        <div id="jsonView"></div>
     </div>
 
     <script>
-        async function fetchData() {
+        async function fetchExcelData(filename) {
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            const jsonViewEl = document.getElementById('jsonView');
+            
+            loadingEl.style.display = 'block';
+            errorEl.style.display = 'none';
+            jsonViewEl.innerHTML = '';
+
             try {
-                const response = await fetch('/api/excel-data');
+                const response = await fetch(`/api/excel-data?file=${encodeURIComponent(filename)}`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch data');
                 }
                 const data = await response.json();
                 displayData(data);
             } catch (error) {
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('error').textContent = 'Error loading data: ' + error.message;
+                errorEl.innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        Error: ${error.message}
+                    </div>
+                `;
+                errorEl.style.display = 'block';
+            } finally {
+                loadingEl.style.display = 'none';
             }
         }
 
-        function displayData(data) {
-            const tableHeader = document.getElementById('tableHeader');
-            const tableBody = document.getElementById('tableBody');
+        function displayData(response) {
+            const jsonViewEl = document.getElementById('jsonView');
             
-            // Clear existing content
-            tableHeader.innerHTML = '';
-            tableBody.innerHTML = '';
-            document.getElementById('loading').style.display = 'none';
-
-            if (data.length === 0) {
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('error').textContent = 'No data available';
+            if (!response.data || response.data.length === 0) {
+                jsonViewEl.innerHTML = `
+                    <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+                        No data available
+                    </div>
+                `;
                 return;
             }
 
-            // Create table headers
-            const headers = Object.keys(data[0]);
-            headers.forEach(header => {
-                const th = document.createElement('th');
-                th.textContent = header;
-                tableHeader.appendChild(th);
-            });
+            const headers = response.headers;
+            const headerRow = headers.map(header => `
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ${header}
+                </th>
+            `).join('');
 
-            // Create table rows
-            data.forEach(row => {
-                const tr = document.createElement('tr');
-                headers.forEach(header => {
-                    const td = document.createElement('td');
-                    td.textContent = row[header] || '';
-                    tr.appendChild(td);
-                });
-                tableBody.appendChild(tr);
-            });
+            const rows = response.data.map(item => `
+                <tr class="hover:bg-gray-50">
+                    ${headers.map(header => `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${item[header] !== undefined ? item[header] : ''}
+                        </td>
+                    `).join('')}
+                </tr>
+            `).join('');
+
+            jsonViewEl.innerHTML = `
+                <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                        <h2 class="text-lg font-semibold text-gray-800">
+                            Data from ${response.filename}
+                        </h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>${headerRow}</tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                ${rows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
         }
 
-        // Fetch data when the page loads
-        fetchData();
+        // Set up event listener for file selection
+        document.getElementById('fileSelect').addEventListener('change', (e) => {
+            fetchExcelData(e.target.value);
+        });
+
+        // Fetch initial data
+        fetchExcelData('Moodle_datein.xlsx');
     </script>
 </body>
-</html> 
+</html>
